@@ -107,7 +107,6 @@ pub fn segmented_sieve(limit: u64) -> Vec<u64> {
         segment = [!0; SEGMENT_LEN];
     }
 
-    // Correct the first entry so that we don't treat 1 as prime, then return.
     segments
 }
 
