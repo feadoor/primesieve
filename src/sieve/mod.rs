@@ -1,8 +1,9 @@
 //! A structure which sieves for prime numbers and provides functions to iterate over the primes,
 //! to get the nth prime and for querying whether a particular number is prime.
 
+mod primefuncs;
+
 use iterator;
-use segment;
 use segsieve::segmented_sieve;
 
 const MODULUS: u64 = 240;
@@ -35,7 +36,7 @@ pub struct Sieve {
     counts: Vec<usize>,
 }
 
-impl<'a> Sieve {
+impl Sieve {
     /// Create a new `Sieve` which knows about the primes up to the given limit.
     pub fn to_limit(limit: u64) -> Sieve {
         // Sieve for primes using a segmented sieve.
@@ -101,88 +102,33 @@ impl<'a> Sieve {
         self.counts[self.counts.len() - 1]
     }
 
-    /// Return an iterator over the primes in this `Sieve`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let sieve = primesieve::Sieve::to_limit(100);
-    /// assert_eq!(sieve.iter().take_while(|&x| x < 100).collect::<Vec<u64>>(),
-    ///            vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41,
-    ///                 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
-    /// ```
-    pub fn iter(&'a self) -> SieveIterator<'a> {
-        SieveIterator {
-            small: SmallPrime::Two,
-            sieve_iter: iterator::SieveIterator::new(&self.primes),
-        }
-    }
-
-    /// Returns whether or not `n` is a prime number.
-    ///
-    /// # Panics
-    ///
-    /// If `n` is out of range for the sieve, this function will panic.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let sieve = primesieve::Sieve::to_limit(500);
-    ///
-    /// assert_eq!(sieve.is_prime(0), false);
-    /// assert_eq!(sieve.is_prime(1), false);
-    /// assert_eq!(sieve.is_prime(2), true);
-    /// assert_eq!(sieve.is_prime(3), true);
-    /// assert_eq!(sieve.is_prime(4), false);
-    /// assert_eq!(sieve.is_prime(5), true);
-    ///
-    /// assert_eq!(sieve.is_prime(491), true);
-    /// assert_eq!(sieve.is_prime(493), false);
-    /// assert_eq!(sieve.is_prime(495), false);
-    /// assert_eq!(sieve.is_prime(497), false);
-    /// assert_eq!(sieve.is_prime(499), true);
-    /// ```
-    pub fn is_prime(&self, n: u64) -> bool {
-        match n {
-            2 | 3 | 5 => true,
-            _ => {
-                if n < self.limit() {
-                    segment::get(&self.primes, n)
-                } else {
-                    panic!("Sieve limit exceeded")
-                }
-            }
-        }
-    }
-
-    /// Returns the `n`th prime number, indexed from 0.
-    ///
-    /// # Panics
-    ///
-    /// If fewer than `n` prime numbers are held in the sieve, this function will panic.
+    /// Returns the `n`th prime number, indexed from 0, or `None` if fewer than `n` prime numbers
+    /// are held in the sieve.
     ///
     /// # Examples
     ///
     /// ```
     /// let sieve = primesieve::Sieve::to_n_primes(100);
     ///
-    /// assert_eq!(sieve.nth_prime(0), 2);
-    /// assert_eq!(sieve.nth_prime(1), 3);
-    /// assert_eq!(sieve.nth_prime(2), 5);
-    /// assert_eq!(sieve.nth_prime(3), 7);
-    /// assert_eq!(sieve.nth_prime(4), 11);
+    /// assert_eq!(sieve.nth_prime(0), Some(2));
+    /// assert_eq!(sieve.nth_prime(1), Some(3));
+    /// assert_eq!(sieve.nth_prime(2), Some(5));
+    /// assert_eq!(sieve.nth_prime(3), Some(7));
+    /// assert_eq!(sieve.nth_prime(4), Some(11));
     ///
-    /// assert_eq!(sieve.nth_prime(97), 521);
-    /// assert_eq!(sieve.nth_prime(98), 523);
-    /// assert_eq!(sieve.nth_prime(99), 541);
+    /// assert_eq!(sieve.nth_prime(97), Some(521));
+    /// assert_eq!(sieve.nth_prime(98), Some(523));
+    /// assert_eq!(sieve.nth_prime(99), Some(541));
+    ///
+    /// assert_eq!(sieve.nth_prime(1000), None);
     /// ```
-    pub fn nth_prime(&self, n: usize) -> u64 {
+    pub fn nth_prime(&self, n: usize) -> Option<u64> {
         // If n is small enough (i.e. 0, 1 or 2) then return the prime directly. Otherwise, we
         // should do a binary search of `self.counts` to find the right prime.
         match n {
-            0 => 2,
-            1 => 3,
-            2 => 5,
+            0 => Some(2),
+            1 => Some(3),
+            2 => Some(5),
             _ => {
                 if n < self.num_primes() {
                     // Find the index into `self.primes` where we will find the `n`th prime,
@@ -202,11 +148,30 @@ impl<'a> Sieve {
                     let count = self.counts[idx] - self.primes[idx].count_ones() as usize;
                     let primes = &[self.primes[idx]];
                     let mut primes_iter = iterator::SieveIterator::new(primes);
-                    MODULUS * idx as u64 + primes_iter.nth((k - count) as usize).unwrap()
+                    Some(MODULUS * idx as u64 + primes_iter.nth((k - count) as usize).unwrap())
                 } else {
-                    panic!("Sieve limit exceeded")
+                    None
                 }
             }
+        }
+    }
+}
+
+impl<'a> Sieve {
+    /// Return an iterator over the primes in this `Sieve`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let sieve = primesieve::Sieve::to_limit(100);
+    /// assert_eq!(sieve.iter().take_while(|&x| x < 100).collect::<Vec<u64>>(),
+    ///            vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41,
+    ///                 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
+    /// ```
+    pub fn iter(&'a self) -> SieveIterator<'a> {
+        SieveIterator {
+            small: SmallPrime::Two,
+            sieve_iter: iterator::SieveIterator::new(&self.primes),
         }
     }
 }
