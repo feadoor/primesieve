@@ -61,7 +61,7 @@ impl Sieve {
 
     /// Factorises `n` into (prime, exponent) pairs.
     ///
-    /// Returns Err(remainder, partial factorisation) if `n` cannot be fully factorised without
+    /// Returns `Err(remainder, partial factorisation)` if `n` cannot be fully factorised without
     /// sieving for more primes.
     ///
     /// If `x` is the largest number known about by the sieve, then any integer having at most one
