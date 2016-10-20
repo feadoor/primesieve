@@ -51,7 +51,7 @@ impl Sieve {
                 if n < self.limit() {
                     Ok(segment::get(&self.primes, n))
                 } else if n <= self.limit().saturating_mul(self.limit()) {
-                    Ok(Sieve::trial_division(&self, n))
+                    Ok(Sieve::trial_division(self, n))
                 } else {
                     Err(())
                 }
@@ -154,6 +154,39 @@ impl Sieve {
                 n = (n / p) * (p - 1);
             }
             Ok(n)
+        } else {
+            Err(())
+        }
+    }
+
+    /// Calculates the number of divisors of `n`.
+    ///
+    /// Returns Err(()) is `n` cannot be fully factorised without first sieving for more primes.
+    ///
+    /// This uses the well-known formula, that if `n` is given in factorised form as a product
+    /// `p_i ^ a_i`, then the number of divisors of `n` is given by:
+    ///
+    /// (a_1 + 1)(a_2 + 1) ... (a_k + 1)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let sieve = primesieve::Sieve::to_limit(100);
+    ///
+    /// assert_eq!(sieve.number_of_divisors(2), Ok(2));
+    /// assert_eq!(sieve.number_of_divisors(4), Ok(3));
+    /// assert_eq!(sieve.number_of_divisors(1 << 63), Ok(64));
+    ///
+    /// assert_eq!(sieve.number_of_divisors(2 * 3), Ok(2 * 2));
+    /// assert_eq!(sieve.number_of_divisors(89 * 97), Ok(2 * 2));
+    /// assert_eq!(sieve.number_of_divisors(8 * 9 * 5), Ok(4 * 3 * 2));
+    ///
+    /// assert_eq!(sieve.number_of_divisors(2 * 3 * 5 * 991), Ok(2 * 2 * 2 * 2));
+    /// assert_eq!(sieve.number_of_divisors(2 * 3 * 5 * 991 * 991), Err(()));
+    /// ```
+    pub fn number_of_divisors(&self, n: u64) -> Result<u64, ()> {
+        if let Ok(factors) = self.factorise(n) {
+            Ok(factors.iter().map(|x| x.1 + 1).product())
         } else {
             Err(())
         }
